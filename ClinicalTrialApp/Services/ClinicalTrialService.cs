@@ -74,10 +74,6 @@ public class ClinicalTrialService : IClinicalTrialService
         if (trial.EndDate.HasValue)
         {
             trial.EndDate = DateTime.SpecifyKind(trial.EndDate.Value, DateTimeKind.Utc);
-        }
-
-        if (trial.EndDate.HasValue)
-        {
             trial.DurationInDays = (trial.EndDate.Value - trial.StartDate).Days;
         }
 
@@ -86,7 +82,6 @@ public class ClinicalTrialService : IClinicalTrialService
         {
             trial.EndDate = trial.StartDate.AddMonths(1);
             trial.DurationInDays = (trial.EndDate.Value - trial.StartDate).Days;
-            trial.Status = TrialStatus.Ongoing;
         }
     }
 }
