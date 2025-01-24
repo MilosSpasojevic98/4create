@@ -19,7 +19,7 @@ public static class ClinicalTrialEndpoints
             IFormFile file,
             ISender mediator) =>
         {
-            try 
+            try
             {
                 var command = new UploadTrialDataCommand(file);
                 var result = await mediator.Send(command);
@@ -27,7 +27,11 @@ public static class ClinicalTrialEndpoints
                 if (result.IsFailure)
                     return Results.BadRequest(result.Error);
 
-                return Results.Ok("Trial data processed successfully");
+                return Results.Ok(new
+                {
+                    Message = "Trial data processed successfully",
+                    TrialId = result.Value
+                });
             }
             catch (ValidationException ex)
             {
@@ -37,7 +41,7 @@ public static class ClinicalTrialEndpoints
         .DisableAntiforgery()
         .WithName("UploadTrialData")
         .WithDescription("Upload a JSON file containing clinical trial metadata")
-        .Produces<string>(StatusCodes.Status200OK)
+        .Produces<object>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest);
 
         group.MapGet("/{id}", async Task<IResult> (
@@ -65,4 +69,4 @@ public static class ClinicalTrialEndpoints
         .WithDescription("Get all clinical trials, optionally filtered by status")
         .Produces<IEnumerable<ClinicalTrialMetadata>>(StatusCodes.Status200OK);
     }
-} 
+}

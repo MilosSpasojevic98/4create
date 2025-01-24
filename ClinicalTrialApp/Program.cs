@@ -5,56 +5,70 @@ using ClinicalTrialApp.Services;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using ClinicalTrialApp.Common.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Serilog
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateLogger();
 
 builder.Host.UseSerilog();
 
-// Add services to the container
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "Clinical Trial API", Version = "v1" });
+});
 
-// Configure PostgreSQL
 builder.Services.AddDbContext<ClinicalTrialDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
            .UseSnakeCaseNamingConvention());
 
-// Register MediatR
 builder.Services.AddMediatR(config =>
 {
     config.RegisterServicesFromAssembly(typeof(Program).Assembly);
     config.AddOpenBehavior(typeof(ValidationBehavior<,>));
 });
 
-// Register FluentValidation
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
-// Register application services
 builder.Services.AddScoped<IJsonSchemaValidator, JsonSchemaValidator>();
 builder.Services.AddScoped<IClinicalTrialService, ClinicalTrialService>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+    });
+});
+
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseCors();
 
 app.UseHttpsRedirection();
+
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Clinical Trial API V1");
+    c.RoutePrefix = "";
+});
+
 app.UseSerilogRequestLogging();
 
-// Map endpoints
-app.MapClinicalTrialEndpoints();
+app.UseMiddleware<ErrorHandlingMiddleware>();
 
-// Ensure database is created and migrations are applied
+app.MapClinicalTrialEndpoints();
+app.MapHealthChecks("/health");
+
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ClinicalTrialDbContext>();

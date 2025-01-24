@@ -10,7 +10,7 @@ namespace ClinicalTrialApp.Services;
 
 public interface IClinicalTrialService
 {
-    Task<Result> ProcessTrialDataAsync(Stream fileStream, long fileSize, CancellationToken cancellationToken = default);
+    Task<Result<Guid>> ProcessTrialDataAsync(string? jsonContent, CancellationToken cancellationToken = default);
 }
 
 public class ClinicalTrialService : IClinicalTrialService
@@ -29,22 +29,25 @@ public class ClinicalTrialService : IClinicalTrialService
         _publisher = publisher;
     }
 
-    public async Task<Result> ProcessTrialDataAsync(Stream fileStream, long fileSize, CancellationToken cancellationToken = default)
+    public async Task<Result<Guid>> ProcessTrialDataAsync(string? jsonContent, CancellationToken cancellationToken = default)
     {
         try
         {
-            using var streamReader = new StreamReader(fileStream);
-            var jsonContent = await streamReader.ReadToEndAsync();
-
             var (isValid, errors) = await _schemaValidator.ValidateAsync(jsonContent, SchemaType.ClinicalTrial);
             if (!isValid)
-                return Result.Failure($"Invalid JSON format: {string.Join(", ", errors)}");
+                return Result<Guid>.Failure($"Invalid JSON format: {string.Join(", ", errors)}");
 
             var trialData = JsonSerializer.Deserialize<ClinicalTrialMetadata>(jsonContent,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
             if (trialData == null)
-                return Result.Failure("Failed to deserialize trial data");
+                return Result<Guid>.Failure("Failed to deserialize trial data");
+
+            // Check if trial with same trialId already exists
+            var existingTrial = await _unitOfWork.ClinicalTrials.FirstOrDefaultAsync(t => t.TrialId == trialData.TrialId);
+
+            if (existingTrial != null)
+                return Result<Guid>.Failure($"Trial with ID '{trialData.TrialId}' has already been uploaded");
 
             ApplyBusinessRules(trialData);
 
@@ -56,15 +59,15 @@ public class ClinicalTrialService : IClinicalTrialService
 
             await _publisher.Publish(new TrialCreatedEvent(trialData), cancellationToken);
 
-            return Result.Success();
+            return Result<Guid>.Success(trialData.Id);
         }
         catch (JsonException ex)
         {
-            return Result.Failure($"JSON parsing error: {ex.Message}");
+            return Result<Guid>.Failure($"JSON parsing error: {ex.Message}");
         }
         catch (Exception ex)
         {
-            return Result.Failure($"Processing error: {ex.Message}");
+            return Result<Guid>.Failure($"Processing error: {ex.Message}");
         }
     }
 

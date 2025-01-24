@@ -2,8 +2,6 @@ using ClinicalTrialApp.Models;
 
 namespace ClinicalTrialApp.Data;
 
-public interface IClinicalTrialRepository
+public interface IClinicalTrialRepository : IRepository<ClinicalTrialMetadata>
 {
-    Task<ClinicalTrialMetadata> AddAsync(ClinicalTrialMetadata trial);
-    Task SaveChangesAsync();
-} 
+}

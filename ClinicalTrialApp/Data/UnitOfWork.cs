@@ -10,11 +10,11 @@ public class UnitOfWork : IUnitOfWork
         _dbContext = dbContext;
     }
 
-    public IClinicalTrialRepository ClinicalTrials => 
+    public IClinicalTrialRepository ClinicalTrials =>
         _clinicalTrials ??= new ClinicalTrialRepository(_dbContext);
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         return await _dbContext.SaveChangesAsync(cancellationToken);
     }
-} 
+}

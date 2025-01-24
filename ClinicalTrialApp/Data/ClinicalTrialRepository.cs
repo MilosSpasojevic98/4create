@@ -1,24 +1,11 @@
 using ClinicalTrialApp.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace ClinicalTrialApp.Data;
 
-public class ClinicalTrialRepository : IClinicalTrialRepository
+public class ClinicalTrialRepository : Repository<ClinicalTrialMetadata>, IClinicalTrialRepository
 {
-    private readonly ClinicalTrialDbContext _dbContext;
-
-    public ClinicalTrialRepository(ClinicalTrialDbContext dbContext)
+    public ClinicalTrialRepository(ClinicalTrialDbContext context) : base(context)
     {
-        _dbContext = dbContext;
     }
-
-    public async Task<ClinicalTrialMetadata> AddAsync(ClinicalTrialMetadata trial)
-    {
-        var entry = await _dbContext.ClinicalTrialData.AddAsync(trial);
-        return entry.Entity;
-    }
-
-    public async Task SaveChangesAsync()
-    {
-        await _dbContext.SaveChangesAsync();
-    }
-} 
+}
