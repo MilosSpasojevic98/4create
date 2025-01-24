@@ -21,55 +21,42 @@ A modern .NET API for managing clinical trial metadata, built with clean archite
 
 ### 1. Clone the Repository
 
-```bash
+```cmd
 git clone <repository-url>
 cd clinical-trial-app
 ```
 
-### 2. Database Setup
+### 2. Run with Docker Compose (Recommended)
 
-The application uses PostgreSQL. You have two options:
+```cmd
+REM Build and start the containers
+docker compose up --build
 
-#### Option A: Using Docker (Recommended)
-```bash
-docker run --name clinical-trial-db \
-  -e POSTGRES_DB=clinicalTrial \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -p 5432:5432 \
-  -d postgres:latest
-```
-
-#### Option B: Local PostgreSQL Installation
-- Install PostgreSQL
-- Create a database named `clinicalTrial`
-- Update connection string in `appsettings.json` if needed
-
-### 3. Configuration
-
-The default configuration in `appsettings.json` should work out of the box with the Docker setup. If you need to modify it:
-
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=clinicalTrial;Username=postgres;Password=postgres"
-  }
-}
-```
-
-### 4. Run the Application
-
-```bash
-dotnet restore
-dotnet build
-dotnet run --project ClinicalTrialApp
+REM Stop the containers
+docker compose down
 ```
 
 The API will be available at:
-- HTTP: http://localhost:5177
-- HTTPS: https://localhost:7177
+- HTTPS: https://localhost:5001
+- HTTP: http://localhost:5000
 
-Swagger UI will be available at: https://localhost:7177/swagger
+Swagger UI will be available at: https://localhost:5001
+
+### 3. Development Certificates
+
+If you get certificate errors:
+
+```cmd
+dotnet dev-certs https --clean
+dotnet dev-certs https -ep %USERPROFILE%\.aspnet\https\aspnetapp.pfx -p your_password
+dotnet dev-certs https --trust
+```
+
+Update the password in docker-compose.yml:
+```yaml
+environment:
+  - ASPNETCORE_Kestrel__Certificates__Default__Password=your_password
+```
 
 ## API Endpoints
 
@@ -79,6 +66,14 @@ POST /api/trials/upload
 Content-Type: multipart/form-data
 
 file=@trial.json
+```
+
+Response:
+```json
+{
+    "message": "Trial data processed successfully",
+    "trialId": "123e4567-e89b-12d3-a456-426614174000"
+}
 ```
 
 Example trial.json:
@@ -108,9 +103,26 @@ Optional query parameter for filtering by status:
 GET /api/trials?status=Ongoing
 ```
 
+## Business Rules
+
+- Trial dates are automatically converted to UTC
+- Duration is calculated for trials with end dates
+- Ongoing trials without end dates get a default 1-month duration
+- Duplicate trialIds are not allowed
+- File size limit of 1MB
+- Only JSON files are accepted
+
+## Schema Validation
+
+Trial data must conform to the JSON schema located in `Schemas/clinicaltrial-schema.json`. Key validations include:
+- Required fields: trialId, title, startDate, status
+- Date format validation
+- Enum validation for status (Ongoing, Completed, Terminated)
+- Additional property checks
+
 ## Running Tests
 
-```bash
+```cmd
 dotnet test
 ```
 
@@ -118,15 +130,47 @@ The test suite includes:
 - Unit tests for core business logic
 - Integration tests using test containers
 - Validation tests for JSON schema
+- Command handler tests
+- Service layer tests
 
-## Schema Validation
+## Error Handling
 
-Trial data must conform to the JSON schema located in `Schemas/clinicaltrial-schema.json`. Key validations include:
-- Required fields: trialId, title, startDate, status
-- Date format validation
-- Enum validation for status
-- Additional property checks
+The API provides structured error responses:
+```json
+{
+    "status": "Error",
+    "message": "Descriptive error message"
+}
+```
+
+Common error scenarios:
+- Invalid JSON format
+- Schema validation failures
+- Duplicate trial IDs
+- File size exceeded
+- Invalid file type
+
+## Architecture
+
+The application follows clean architecture principles:
+- CQRS with MediatR
+- Repository pattern
+- Result pattern for error handling
+- Event-driven design
+- Fluent Validation
+- Middleware-based error handling
+
+## Environment Variables
+
+Key environment variables (set in docker-compose.yml):
+```yaml
+- ASPNETCORE_ENVIRONMENT=Development
+- ASPNETCORE_URLS=https://+:5001;http://+:5000
+- ConnectionStrings__DefaultConnection=Host=db;Database=clinicalTrial;Username=postgres;Password=admin
+```
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details
+
+
