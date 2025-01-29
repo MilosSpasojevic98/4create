@@ -23,7 +23,7 @@ A modern .NET API for managing clinical trial metadata, built with clean archite
 
 ```cmd
 git clone <repository-url>
-cd clinical-trial-app
+cd ClinicalTrialApp
 ```
 
 ### 2. Run with Docker Compose (Recommended)
